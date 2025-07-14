@@ -2,10 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+// DEFINIÇÃO DA STRUCT CORRIGIDA E COMPATÍVEL
 typedef struct {
     char nome[50];
     char cpf[12];
     float nota;
+    long long chave; // Campo adicionado
+    int ativo;       // Campo adicionado
 } Registro;
 
 int tam() {
@@ -27,34 +30,37 @@ int esq(int i) { return i * 2; }
 int dir(int i) { return i * 2 + 1; }
 
 void descer(FILE *f, int i, int n) {
-    int maior = i;
-    Registro atual, filho_esq, filho_dir;
+    int maior_idx = i;
+    Registro r_i, r_maior;
 
-    le_registro(f, i, &atual);
+    le_registro(f, i, &r_i);
+    r_maior = r_i;
 
     int e = esq(i);
     if (e <= n) {
-        le_registro(f, e, &filho_esq);
-        if (filho_esq.nota > atual.nota) {
-            maior = e;
+        Registro r_esq;
+        le_registro(f, e, &r_esq);
+        if (r_esq.nota > r_maior.nota) {
+            maior_idx = e;
+            r_maior = r_esq;
         }
     }
 
     int d = dir(i);
     if (d <= n) {
-        le_registro(f, d, &filho_dir);
-        Registro *comparado = (maior == i) ? &atual : &filho_esq;
-        if (filho_dir.nota > comparado->nota) {
-            maior = d;
+        Registro r_dir;
+        le_registro(f, d, &r_dir);
+        if (r_dir.nota > r_maior.nota) {
+            maior_idx = d;
         }
     }
 
-    if (maior != i) {
-        Registro r_maior;
-        le_registro(f, maior, &r_maior);
-        salva_registro(f, i, &r_maior);
-        salva_registro(f, maior, &atual);
-        descer(f, maior, n);
+    if (maior_idx != i) {
+        Registro record_to_swap;
+        le_registro(f, maior_idx, &record_to_swap);
+        salva_registro(f, i, &record_to_swap);
+        salva_registro(f, maior_idx, &r_i);
+        descer(f, maior_idx, n);
     }
 }
 
@@ -73,7 +79,7 @@ void constroi_heap(const char *nome_arquivo, int n) {
 }
 
 int main() {
-    FILE *f_in = fopen("registros.dat", "rb");
+    FILE *f_in = fopen("../registros.dat", "rb"); // Ajuste o caminho se necessário
     FILE *f_out = fopen("heap.dat", "wb");
 
     if (!f_in || !f_out) {
@@ -83,15 +89,18 @@ int main() {
 
     Registro r;
     int count = 0;
-    while (fread(&r, tam(), 1, f_in) == 1) {
-        fwrite(&r, tam(), 1, f_out);
+    // Agora a leitura será feita com o tamanho correto da struct
+    while (fread(&r, sizeof(Registro), 1, f_in) == 1) {
+        fwrite(&r, sizeof(Registro), 1, f_out);
         count++;
     }
 
     fclose(f_in);
     fclose(f_out);
 
+    printf("Copiados %d registros para heap.dat. Construindo o heap...\n", count);
     constroi_heap("heap.dat", count);
+    printf("Heap construído com sucesso.\n");
 
     return 0;
 }
