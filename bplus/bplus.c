@@ -4,6 +4,13 @@
 #include "bplus.h"
 #include "../gerador/gerador.h"
 
+// ESTRUTURA DA FILA PARA IMPRESSÃO POR NÍVEL
+typedef struct FilaNo {
+    No* no;
+    int nivel;
+    struct FilaNo* prox;
+} FilaNo;
+
 // PROTÓTIPOS INTERNOS
 static void insere_no_interno(No* no, long long chave, No* filho_direito);
 static void divide_no_interno(No* no, long long* chave_promovida, No** novo_no);
@@ -11,6 +18,9 @@ static void insere_na_folha(No* folha, Par p);
 static void divide_no_folha(No* folha, long long* chave_promovida, No** novo_no);
 No* criar_no_interno(void);
 No* criar_no_folha(void);
+void enfileirar(FilaNo** frente, FilaNo** tras, No* no, int nivel);
+FilaNo* desenfileirar(FilaNo** frente, FilaNo** tras);
+
 
 // CRIAÇÃO DE NÓS
 No* criar_no_interno(void) {
@@ -80,14 +90,20 @@ static void insere_no_interno(No* no, long long chave, No* filho_direito) {
 static void divide_no_interno(No* no, long long* chave_promovida, No** novo_no) {
     *novo_no = criar_no_interno();
     int ponto_meio = (M - 1) / 2;
+
     *chave_promovida = no->chaves[ponto_meio];
 
+    int j = 0;
     for (int i = ponto_meio + 1; i < M - 1; i++) {
-        (*novo_no)->chaves[i - ponto_meio - 1] = no->chaves[i];
-        (*novo_no)->num_chaves++;
+        (*novo_no)->chaves[j] = no->chaves[i];
+        j++;
     }
+    (*novo_no)->num_chaves = j;
+
+    j = 0;
     for (int i = ponto_meio + 1; i < M; i++) {
-        (*novo_no)->filhos[i - ponto_meio - 1] = no->filhos[i];
+        (*novo_no)->filhos[j] = no->filhos[i];
+        j++;
     }
 
     no->num_chaves = ponto_meio;
@@ -110,22 +126,25 @@ static No* insere_recursivo(No* no, Par p, long long* chave_promovida) {
     }
 
     No* novo_filho = insere_recursivo(no->filhos[i], p, chave_promovida);
+
     if (novo_filho) {
         insere_no_interno(no, *chave_promovida, novo_filho);
-        if (no->num_chaves == M) {
-            No* novo_no = NULL;
-            long long nova_chave;
-            divide_no_interno(no, &nova_chave, &novo_no);
-            *chave_promovida = nova_chave;
-            return novo_no;
+        if (no->num_chaves == M - 1) {
+            No* novo_no_interno = NULL;
+            long long nova_chave_promovida;
+            divide_no_interno(no, &nova_chave_promovida, &novo_no_interno);
+            *chave_promovida = nova_chave_promovida;
+            return novo_no_interno;
         }
     }
+
     return NULL;
 }
 
 void insere(No** raiz, Par p) {
-    if (*raiz == NULL)
+    if (*raiz == NULL) {
         *raiz = criar_arvore();
+    }
 
     long long chave_promovida;
     No* novo_filho = insere_recursivo(*raiz, p, &chave_promovida);
@@ -140,13 +159,7 @@ void insere(No** raiz, Par p) {
     }
 }
 
-// IMPRESSÃO POR NÍVEL
-
-typedef struct FilaNo {
-    No* no;
-    int nivel;
-    struct FilaNo* prox;
-} FilaNo;
+// FILA
 
 void enfileirar(FilaNo** frente, FilaNo** tras, No* no, int nivel) {
     FilaNo* novo = (FilaNo*)malloc(sizeof(FilaNo));
@@ -158,12 +171,15 @@ void enfileirar(FilaNo** frente, FilaNo** tras, No* no, int nivel) {
     *tras = novo;
 }
 
-FilaNo* desenfileirar(FilaNo** frente) {
+FilaNo* desenfileirar(FilaNo** frente, FilaNo** tras) {
     if (!*frente) return NULL;
     FilaNo* temp = *frente;
     *frente = (*frente)->prox;
+    if (*frente == NULL) *tras = NULL;
     return temp;
 }
+
+// IMPRESSÃO 
 
 void imprimir_arvore_por_nivel(No* raiz) {
     if (!raiz) {
@@ -176,51 +192,96 @@ void imprimir_arvore_por_nivel(No* raiz) {
     enfileirar(&frente, &tras, raiz, 0);
 
     int nivel_atual = -1;
+    int contador_no_nivel = 0;
 
-    printf("\n===== Estrutura da Arvore B+ (por nivel) =====\n");
+    printf("\n===== Estrutura da Árvore B+ (por nível) =====\n");
     while (frente) {
-        FilaNo* atual = desenfileirar(&frente);
+        FilaNo* item_fila = desenfileirar(&frente, &tras);
+        No* no_atual = item_fila->no;
 
-        if (atual->nivel != nivel_atual) {
-            nivel_atual = atual->nivel;
-            printf("\nNivel %d (%s):\n", nivel_atual, atual->no->eh_folha ? "Folhas" : "Interno");
+        if (item_fila->nivel != nivel_atual) {
+            nivel_atual = item_fila->nivel;
+            contador_no_nivel = 0;
+            printf("\n--- Nivel %d (%s) ---\n", nivel_atual, no_atual->eh_folha ? "Folhas" : "Internos");
         }
 
-        if (atual->no->eh_folha) {
+        printf("No %d: ", contador_no_nivel++);
+
+        if (no_atual->eh_folha) {
             printf("[");
-            for (int i = 0; i < atual->no->num_chaves; i++) {
-                printf("%lld", atual->no->pares[i].chave);
-                if (i < atual->no->num_chaves - 1) printf(" ");
+            for (int i = 0; i < no_atual->num_chaves; i++) {
+                printf("%lld", no_atual->pares[i].chave);
+                if (i < no_atual->num_chaves - 1) printf("|");
             }
-            printf("] ");
+            printf("]\n");
         } else {
             printf("{");
-            for (int i = 0; i < atual->no->num_chaves; i++) {
-                printf("%lld", atual->no->chaves[i]);
-                if (i < atual->no->num_chaves - 1) printf(" ");
+            for (int i = 0; i < no_atual->num_chaves; i++) {
+                printf("%lld", no_atual->chaves[i]);
+                if (i < no_atual->num_chaves - 1) printf("|");
             }
-            printf("} ");
-            for (int i = 0; i <= atual->no->num_chaves; i++) {
-                enfileirar(&frente, &tras, atual->no->filhos[i], atual->nivel + 1);
+            printf("}\n");
+
+            for (int i = 0; i <= no_atual->num_chaves; i++) {
+                if (no_atual->filhos[i]) {
+                    enfileirar(&frente, &tras, no_atual->filhos[i], nivel_atual + 1);
+                }
             }
         }
 
-        free(atual);
+        free(item_fila);
     }
-    printf("\n");
+
+    printf("\n==============================================\n");
+}
+
+void salvar_indices(No* no, FILE* f, int nivel) {
+    if (!no || !f) return;
+
+    for (int i = 0; i < nivel; i++) fprintf(f, "  ");
+
+    if (no->eh_folha) {
+        fprintf(f, "[");
+        for (int i = 0; i < no->num_chaves; i++) {
+            fprintf(f, "%lld", no->pares[i].chave);
+            if (i < no->num_chaves - 1) fprintf(f, "|");
+        }
+        fprintf(f, "]\n");
+    } else {
+        fprintf(f, "{");
+        for (int i = 0; i < no->num_chaves; i++) {
+            fprintf(f, "%lld", no->chaves[i]);
+            if (i < no->num_chaves - 1) fprintf(f, "|");
+        }
+        fprintf(f, "}\n");
+
+        for (int i = 0; i <= no->num_chaves; i++) {
+            salvar_indices(no->filhos[i], f, nivel + 1);
+        }
+    }
 }
 
 // MAIN
 
 int main() {
-    FILE *f_registros = fopen("../registros.dat", "rb");
-    if (!f_registros) {
-        perror("Erro ao abrir 'registros.dat'");
+    // Redireciona stdout para arquivo de log
+    FILE* log = freopen("saida_terminal.txt", "w", stdout);
+    if (!log) {
+        perror("Erro ao criar arquivo de log");
         return 1;
     }
 
+    FILE *f_registros = fopen("../registros.dat", "rb");
+    if (!f_registros) {
+        f_registros = fopen("registros.dat", "rb");
+        if (!f_registros) {
+            perror("Erro ao abrir 'registros.dat'");
+            return 1;
+        }
+    }
+
     No* raiz = NULL;
-    printf("Iniciando construcao da Arvore B+ de ordem %d...\n", M);
+    printf("Iniciando construção da Árvore B+ de ordem %d...\n", M);
 
     Registro reg;
     long offset = 0;
@@ -231,17 +292,24 @@ int main() {
             Par p = {reg.chave, offset};
             insere(&raiz, p);
             count++;
-            if (count % 1000 == 0)
-                printf("Processados %d registros...\n", count);
         }
         offset = ftell(f_registros);
     }
 
     fclose(f_registros);
-    printf("\nConstrucao finalizada. %d registros inseridos na Arvore B+.\n", count);
+    printf("\nConstrução finalizada. %d registros inseridos na Árvore B+.\n", count);
 
     imprimir_arvore_por_nivel(raiz);
-    printf("%d", count);
+
+    // Salva estrutura em arquivo separado
+    FILE* f_indices = fopen("indices_bplus.txt", "w");
+    if (f_indices && raiz) {
+        salvar_indices(raiz, f_indices, 0);
+        fclose(f_indices);
+        printf("\nÍndices salvos em 'indices_bplus.txt'.\n");
+    } else {
+        printf("Erro ao salvar índices.\n");
+    }
 
     return 0;
 }
