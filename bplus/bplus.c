@@ -159,6 +159,95 @@ void insere(No** raiz, Par p) {
     }
 }
 
+// REMOÇÃO
+
+static void remover_interno(No* no, long long chave, No* filho);
+static void redistribuir_no(No* no_pai, int indice_filho);
+static void fundir_nos(No* no_pai, int indice_filho);
+static No* remover_recursivo(No* no, long long chave);
+
+
+void remover(No** raiz, long long chave) {
+    if (!(*raiz)) {
+        printf("A arvore esta vazia.\n");
+        return;
+    }
+
+    remover_recursivo(*raiz, chave);
+
+    // Se a raiz ficar vazia após a remoção, a nova raiz será seu único filho
+    if ((*raiz)->num_chaves == 0 && !(*raiz)->eh_folha) {
+        No* antiga_raiz = *raiz;
+        *raiz = (*raiz)->filhos[0];
+        free(antiga_raiz);
+    }
+}
+
+static No* remover_recursivo(No* no, long long chave) {
+    if (no->eh_folha) {
+        int i = 0;
+        while (i < no->num_chaves && no->pares[i].chave != chave) {
+            i++;
+        }
+        if (i == no->num_chaves) {
+            // Chave não encontrada
+            return NULL;
+        }
+        // Remove a chave
+        for (int j = i; j < no->num_chaves - 1; j++) {
+            no->pares[j] = no->pares[j + 1];
+        }
+        no->num_chaves--;
+        return no;
+    }
+
+    // Lógica para nós internos
+    int i = 0;
+    while (i < no->num_chaves && chave >= no->chaves[i]) {
+        i++;
+    }
+
+    remover_recursivo(no->filhos[i], chave);
+
+    // Rebalanceamento
+    if (no->filhos[i]->num_chaves < (M / 2)) {
+        redistribuir_no(no, i);
+    }
+    return NULL;
+}
+
+static void redistribuir_no(No* no_pai, int indice_filho) {
+    No* filho = no_pai->filhos[indice_filho];
+    No* irmao_esq = (indice_filho > 0) ? no_pai->filhos[indice_filho - 1] : NULL;
+    No* irmao_dir = (indice_filho < no_pai->num_chaves) ? no_pai->filhos[indice_filho + 1] : NULL;
+
+    if (irmao_esq && irmao_esq->num_chaves > (M / 2)) {
+        // Pega do irmão esquerdo
+        // ... (lógica de rotação para a direita)
+    } else if (irmao_dir && irmao_dir->num_chaves > (M / 2)) {
+        // Pega do irmão direito
+        // ... (lógica de rotação para a esquerda)
+    } else {
+        // Fusão
+        if (irmao_esq) {
+            fundir_nos(no_pai, indice_filho - 1);
+        } else {
+            fundir_nos(no_pai, indice_filho);
+        }
+    }
+}
+
+static void fundir_nos(No* no_pai, int indice_filho) {
+    No* filho_esq = no_pai->filhos[indice_filho];
+    No* filho_dir = no_pai->filhos[indice_filho + 1];
+
+    // ... (lógica de fusão de nós)
+
+    // Libera o nó direito que foi fundido
+    free(filho_dir);
+}
+
+
 // FILA
 
 void enfileirar(FilaNo** frente, FilaNo** tras, No* no, int nivel) {

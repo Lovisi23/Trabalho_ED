@@ -30,5 +30,6 @@ typedef struct No {
 No* criar_no_folha();
 No* criar_arvore();
 void insere(No** raiz, Par p);
+void remover(No** raiz, long long chave)
 
 #endif 

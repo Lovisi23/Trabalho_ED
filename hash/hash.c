@@ -63,6 +63,17 @@ void insere(Hash tabela, Registro *r) {
     }
 }
 
+void remover(Hash tabela, long long chave) {
+    int achou;
+    int pos = busca(tabela, chave, &achou);
+    if (achou && pos != -1) {
+        tabela[pos]->ativo = -1; // Marca como removido
+        printf("Registro com chave %lld removido.\n", chave);
+    } else {
+        printf("Registro com chave %lld nao encontrado para remocao.\n", chave);
+    }
+}
+
 void salvar_em_arquivo(Hash tabela, const char *nome) {
     FILE *f = fopen(nome, "wb");
     if (!f) {

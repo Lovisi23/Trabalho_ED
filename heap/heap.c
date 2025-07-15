@@ -63,6 +63,31 @@ void descer(FILE *f, int i, int n) {
         descer(f, maior_idx, n);
     }
 }
+Registro remover_maior(const char *nome_arquivo, int *n) {
+    FILE *f = fopen(nome_arquivo, "rb+");
+    if (!f) {
+        perror("Erro ao abrir arquivo para remocao");
+        exit(1);
+    }
+
+    if (*n == 0) {
+        printf("Heap vazio!\n");
+        Registro r_vazio = {.chave = -1};
+        return r_vazio;
+    }
+
+    Registro maior, ultimo;
+    le_registro(f, 1, &maior);      // Lê a raiz (maior elemento)
+    le_registro(f, *n, &ultimo);    // Lê o último elemento
+
+    salva_registro(f, 1, &ultimo); // Move o último para a raiz
+    (*n)--;                        // Decrementa o tamanho
+
+    descer(f, 1, *n);              // Corrige a propriedade do heap
+
+    fclose(f);
+    return maior;
+}
 
 void constroi_heap(const char *nome_arquivo, int n) {
     FILE *f = fopen(nome_arquivo, "rb+");
